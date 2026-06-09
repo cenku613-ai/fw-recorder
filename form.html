@@ -139,6 +139,7 @@
   <div class="tabs">
     <div class="tab active" onclick="switchTab('form')">&#62; New Request</div>
     <div class="tab" onclick="switchTab('table')">&#62; All Requests</div>
+    <div class="tab" onclick="switchTab('topology')">&#62; Network Topology</div>
   </div>
 
   <!-- ── Tab 1: Form ── -->
@@ -192,8 +193,16 @@
           <input type="text" id="sourceIP" placeholder="10.0.1.0/24" required>
         </div>
         <div class="form-group">
+          <label>Source Hostname</label>
+          <input type="text" id="sourceHostname" placeholder="server1.corp.local">
+        </div>
+        <div class="form-group">
           <label>Dest IP</label>
           <input type="text" id="destIP" placeholder="10.0.2.0/24" required>
+        </div>
+        <div class="form-group">
+          <label>Dest Hostname</label>
+          <input type="text" id="destHostname" placeholder="server2.corp.local">
         </div>
         <div class="form-group">
           <label>Dest Port</label>
@@ -242,13 +251,31 @@
       <table>
         <thead>
           <tr>
-            <th>Application</th><th>Date</th><th>Requester</th><th>Source</th><th>Dest</th>
-            <th>Proto</th><th>Dir</th><th>Status</th><th>Priority</th>
-            <th>Justification</th><th>Ticket</th><th>Actions</th>
+            <th>Application</th><th>Date</th><th>Requester</th><th>Source IP</th><th>Source Hostname</th>
+            <th>Dest IP</th><th>Dest Hostname</th><th>Port</th><th>Proto</th><th>Dir</th>
+            <th>Status</th><th>Priority</th><th>Justification</th><th>Ticket</th><th>Actions</th>
           </tr>
         </thead>
         <tbody id="tableBody"></tbody>
       </table>
+    </div>
+  </div>
+
+  <!-- ── Tab 3: Network Topology ── -->
+  <div id="tab-topology" class="tab-content">
+    <div class="topology-controls">
+      <h3>Network Topology (Mermaid Diagram)</h3>
+      <p>Generates a Mermaid network diagram showing connections between source and destination hosts.</p>
+      <div style="display: flex; gap: 10px; margin: 15px 0;">
+        <button class="btn btn-primary" onclick="generateTopology()">Generate Topology</button>
+        <button class="btn btn-secondary" onclick="copyMermaidCode()">Copy Mermaid Code</button>
+        <button class="btn btn-secondary" onclick="exportMermaidSVG()">Export SVG</button>
+      </div>
+    </div>
+    <div id="topology-output" class="topology-output">
+      <div class="empty-state">
+        <p>Click "Generate Topology" to visualize your network connections.</p>
+      </div>
     </div>
   </div>
 </div>
@@ -325,7 +352,9 @@ async function submitForm(e) {
   const data = {
     Application: document.getElementById('application').value,
     SourceIP: document.getElementById('sourceIP').value,
+    SourceHostname: document.getElementById('sourceHostname').value,
     DestIP: document.getElementById('destIP').value,
+    DestHostname: document.getElementById('destHostname').value,
     DestPort: document.getElementById('destPort').value,
     Protocol: document.getElementById('protocol').value,
     Direction: document.getElementById('direction').value,
@@ -358,7 +387,7 @@ async function submitForm(e) {
 function renderTable(records) {
   const tbody = document.getElementById('tableBody');
   if (records.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="12"><div class="empty-state"><h3>No records yet</h3><p>Submit your first firewall request using the form above.</p></div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="15"><div class="empty-state"><h3>No records yet</h3><p>Submit your first firewall request using the form above.</p></div></td></tr>';
     return;
   }
   tbody.innerHTML = records.map((r, i) => {
@@ -366,22 +395,33 @@ function renderTable(records) {
     const badgeClass = 'badge-' + st;
     const priClass = 'priority-' + (r.Priority || 'medium').toLowerCase();
     const src = r.SourceIP;
-    const dst = (r.DestIP || '') + ':' + (r.DestPort || '*');
+    const srcHost = r.SourceHostname;
+    const dst = r.DestIP;
+    const dstHost = r.DestHostname;
+    const port = r.DestPort;
     const date = r.DateSubmitted || 'Submitted: -';
     const app = r.Application;
     const requester = r.Requester;
     const ticket = r.TicketRef;
+    const proto = r.Protocol;
+    const dir = r.Direction;
+    const just = r.Justification;
+    const pri = r.Priority;
+    const status = r.Status;
     return `<tr>
       <td><strong>${app}</strong></td>
       <td style="font-size:11px;color:var(--text-dim)">${date}</td>
       <td>${requester}</td>
       <td class="protocol">${src || '-'}</td>
+      <td style="font-size:11px;color:var(--text-dim)">${srcHost || '-'}</td>
       <td class="protocol">${dst || '-'}</td>
-      <td class="protocol">${r.Protocol || '-'}</td>
-      <td>${r.Direction || '-'}</td>
-      <td><span class="badge ${badgeClass}">${r.Status || 'Pending'}</span></td>
-      <td class="${priClass}">${r.Priority || '-'}</td>
-      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.Justification || ''}">${r.Justification || '-'}</td>
+      <td style="font-size:11px;color:var(--text-dim)">${dstHost || '-'}</td>
+      <td class="protocol">${port || '-'}</td>
+      <td class="protocol">${proto || '-'}</td>
+      <td>${dir || '-'}</td>
+      <td><span class="badge ${badgeClass}">${status || 'Pending'}</span></td>
+      <td class="${priClass}">${pri || '-'}</td>
+      <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${just || ''}">${just || '-'}</td>
       <td>${ticket || '-'}</td>
       <td><div class="actions">
         <button class="btn btn-secondary btn-sm" onclick="openEdit(${i})">Edit</button>

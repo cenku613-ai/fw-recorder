@@ -25,7 +25,7 @@ function Ensure-ExcelFile {
         $ws.Name = "Firewall Requests"
         $headers = @(
             "Application", "Requester", "Priority", "Status",
-            "Source IP", "Dest IP", "Dest Port",
+            "Source IP", "Source Hostname", "Dest IP", "Dest Hostname", "Dest Port",
             "Protocol", "Direction", "Justification",
             "Date Submitted", "Date Closed", "Notes", "Ticket Ref"
         );
@@ -51,7 +51,7 @@ function Get-ExcelData {
     $wb = $excel.Workbooks.Open($excelFile)
     $ws = $wb.Sheets.Item(1)
     $usedRows = $ws.UsedRange.Rows.Count
-    $columns = @("Application", "Requester", "Priority", "Status", "SourceIP", "DestIP", "DestPort", "Protocol", "Direction", "Justification", "DateSubmitted", "DateClosed", "Notes", "TicketRef")
+    $columns = @("Application", "Requester", "Priority", "Status", "SourceIP", "SourceHostname", "DestIP", "DestHostname", "DestPort", "Protocol", "Direction", "Justification", "DateSubmitted", "DateClosed", "Notes", "TicketRef")
     $data = @()
     $lastDataRow = 0
     # Find the actual last row with data (UsedRange can be unreliable)
@@ -88,8 +88,10 @@ function Add-ExcelRow($obj) {
     $ws.Cells.Item($lastRow, 3) = $obj.Priority
     $ws.Cells.Item($lastRow, 4) = $obj.Status
     $ws.Cells.Item($lastRow, 5) = $obj.SourceIP
-    $ws.Cells.Item($lastRow, 6) = $obj.DestIP
-    $ws.Cells.Item($lastRow, 7) = $obj.DestPort
+    $ws.Cells.Item($lastRow, 6) = $obj.SourceHostname
+    $ws.Cells.Item($lastRow, 7) = $obj.DestIP
+    $ws.Cells.Item($lastRow, 8) = $obj.DestHostname
+    $ws.Cells.Item($lastRow, 9) = $obj.DestPort
     $ws.Cells.Item($lastRow, 8) = $obj.Protocol
     $ws.Cells.Item($lastRow, 9) = $obj.Direction
     $ws.Cells.Item($lastRow, 10) = $obj.Justification
