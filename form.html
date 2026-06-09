@@ -324,9 +324,11 @@
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 <script>
 mermaid.initialize({ startOnLoad: false, theme: 'dark' });
+console.log('Mermaid library loaded:', typeof mermaid !== 'undefined');
 
 const API = '';
 let allRecords = [];
+console.log('API:', API);
 
 // ── Load data on page load ──
 document.addEventListener('DOMContentLoaded', () => { loadRecords(); });
@@ -519,7 +521,9 @@ function switchTab(tab) {
   if (tab === 'topology') {
     // Load records if not already loaded
     if (!allRecords || allRecords.length === 0) loadRecords();
+    else console.log('Records already loaded:', allRecords.length);
   }
+  console.log('Switched to tab:', tab);
 }
 
 // ── Toast ──
@@ -550,6 +554,7 @@ function exportCSV() {
 let currentMermaidCode = '';
 
 async function generateTopology() {
+  console.log('generateTopology called, allRecords:', allRecords);
   if (!allRecords || allRecords.length === 0) {
     showToast('No records to generate topology.', 'error');
     return;
