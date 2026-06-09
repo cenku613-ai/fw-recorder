@@ -51,13 +51,15 @@ function Get-ExcelData {
     $wb = $excel.Workbooks.Open($excelFile)
     $ws = $wb.Sheets.Item(1)
     $usedRows = $ws.UsedRange.Rows.Count
+    $columns = @("Application", "Requester", "Priority", "Status", "SourceIP", "DestIP", "DestPort", "Protocol", "Direction", "Justification", "DateSubmitted", "DateClosed", "Notes", "TicketRef", "")
     $data = @()
     if ($usedRows -gt 1) {
         for ($r = 2; $r -le $usedRows; $r++) {
             $row = @{}
             for ($c = 1; $c -le 15; $c++) {
                 $val = $ws.Cells.Item($r, $c).Value2
-                $row["$c"] = if ($val -eq $null) { "" } else { $val.ToString() }
+                $key = $columns[$c - 1]
+                $row[$key] = if ($val -eq $null) { "" } else { $val.ToString() }
             }
             $data += $row
         }

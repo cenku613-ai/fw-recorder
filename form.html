@@ -314,9 +314,9 @@ async function loadRecords() {
 
 function updateStats(records) {
   document.getElementById('stat-total').textContent = records.length;
-  document.getElementById('stat-pending').textContent = records.filter(r => r[3] === 'Pending').length;
-  document.getElementById('stat-approved').textContent = records.filter(r => r[3] === 'Approved').length;
-  document.getElementById('stat-implemented').textContent = records.filter(r => r[3] === 'Implemented').length;
+  document.getElementById('stat-pending').textContent = records.filter(r => r.Status === 'Pending').length;
+  document.getElementById('stat-approved').textContent = records.filter(r => r.Status === 'Approved').length;
+  document.getElementById('stat-implemented').textContent = records.filter(r => r.Status === 'Implemented').length;
 }
 
 // ── Submit form ──
@@ -362,26 +362,26 @@ function renderTable(records) {
     return;
   }
   tbody.innerHTML = records.map((r, i) => {
-    const st = (r[3] || '').toLowerCase();
+    const st = (r.Status || '').toLowerCase();
     const badgeClass = 'badge-' + st;
-    const priClass = 'priority-' + (r[2] || 'medium').toLowerCase();
-    const src = r[4];
-    const dst = (r[5] || '') + ':' + (r[6] || '*');
-    const date = r[10] || 'Submitted: -';
-    const app = r[0];
-    const requester = r[1];
-    const ticket = r[13];
+    const priClass = 'priority-' + (r.Priority || 'medium').toLowerCase();
+    const src = r.SourceIP;
+    const dst = (r.DestIP || '') + ':' + (r.DestPort || '*');
+    const date = r.DateSubmitted || 'Submitted: -';
+    const app = r.Application;
+    const requester = r.Requester;
+    const ticket = r.TicketRef;
     return `<tr>
       <td><strong>${app}</strong></td>
       <td style="font-size:11px;color:var(--text-dim)">${date}</td>
       <td>${requester}</td>
       <td class="protocol">${src || '-'}</td>
       <td class="protocol">${dst || '-'}</td>
-      <td class="protocol">${r[7] || '-'}</td>
-      <td>${r[8] || '-'}</td>
-      <td><span class="badge ${badgeClass}">${r[3] || 'Pending'}</span></td>
-      <td class="${priClass}">${r[2] || '-'}</td>
-      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r[9] || ''}">${r[9] || '-'}</td>
+      <td class="protocol">${r.Protocol || '-'}</td>
+      <td>${r.Direction || '-'}</td>
+      <td><span class="badge ${badgeClass}">${r.Status || 'Pending'}</span></td>
+      <td class="${priClass}">${r.Priority || '-'}</td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.Justification || ''}">${r.Justification || '-'}</td>
       <td>${ticket || '-'}</td>
       <td><div class="actions">
         <button class="btn btn-secondary btn-sm" onclick="openEdit(${i})">Edit</button>
@@ -398,8 +398,8 @@ function filterTable() {
   const priority = document.getElementById('filterPriority').value;
   const filtered = allRecords.filter(r => {
     const matchSearch = !q || Object.values(r).some(v => String(v).toLowerCase().includes(q));
-    const matchStatus = !status || r[7] === status || r[8] === status;
-    const matchPriority = !priority || r[9] === priority || r[10] === priority;
+    const matchStatus = !status || r.Protocol === status || r.Direction === status;
+    const matchPriority = !priority || r.Justification === priority || r.DateSubmitted === priority;
     return matchSearch && matchStatus && matchPriority;
   });
   renderTable(filtered);
@@ -409,10 +409,10 @@ function filterTable() {
 async function openEdit(idx) {
   const r = allRecords[idx];
   document.getElementById('editIdx').value = idx;
-  document.getElementById('editStatus').value = r[3] || 'Pending';
-  document.getElementById('editPriority').value = r[2] || 'Medium';
-  document.getElementById('editNotes').value = r[12] || '';
-  document.getElementById('editDateClosed').value = r[11] || '';
+  document.getElementById('editStatus').value = r.Status || 'Pending';
+  document.getElementById('editPriority').value = r.Priority || 'Medium';
+  document.getElementById('editNotes').value = r.Notes || '';
+  document.getElementById('editDateClosed').value = r.DateClosed || '';
   document.getElementById('editModal').classList.add('show');
 }
 
@@ -426,7 +426,7 @@ async function saveEdit(e) {
     DateClosed: document.getElementById('editDateClosed').value || new Date().toISOString().split('T')[0],
   };
   try {
-    const res = await fetch(API + '/api/records/' + encodeURIComponent(r[0]), {
+    const res = await fetch(API + '/api/records/' + encodeURIComponent(r.Application), {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
@@ -451,7 +451,7 @@ async function deleteRecord(idx) {
   if (!confirm('Delete this record?')) return;
   const r = allRecords[idx];
   try {
-    const res = await fetch(API + '/api/records/' + encodeURIComponent(r[0]), { method: 'DELETE' });
+    const res = await fetch(API + '/api/records/' + encodeURIComponent(r.Application), { method: 'DELETE' });
     const result = await res.json();
     if (result.ok) {
       showToast('Record deleted', 'success');
