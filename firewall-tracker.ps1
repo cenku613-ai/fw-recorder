@@ -51,12 +51,19 @@ function Get-ExcelData {
     $wb = $excel.Workbooks.Open($excelFile)
     $ws = $wb.Sheets.Item(1)
     $usedRows = $ws.UsedRange.Rows.Count
-    $columns = @("Application", "Requester", "Priority", "Status", "SourceIP", "DestIP", "DestPort", "Protocol", "Direction", "Justification", "DateSubmitted", "DateClosed", "Notes", "TicketRef", "")
+    $columns = @("Application", "Requester", "Priority", "Status", "SourceIP", "DestIP", "DestPort", "Protocol", "Direction", "Justification", "DateSubmitted", "DateClosed", "Notes", "TicketRef")
     $data = @()
-    if ($usedRows -gt 1) {
-        for ($r = 2; $r -le $usedRows; $r++) {
+    $lastDataRow = 0
+    # Find the actual last row with data (UsedRange can be unreliable)
+    for ($r = 2; $r -le 1000; $r++) {
+        $firstVal = $ws.Cells.Item($r, 1).Value2
+        if ($firstVal -eq $null -or $firstVal -eq "") { break }
+        $lastDataRow = $r
+    }
+    if ($lastDataRow -ge 2) {
+        for ($r = 2; $r -le $lastDataRow; $r++) {
             $row = @{}
-            for ($c = 1; $c -le 15; $c++) {
+            for ($c = 1; $c -le $columns.Count; $c++) {
                 $val = $ws.Cells.Item($r, $c).Value2
                 $key = $columns[$c - 1]
                 $row[$key] = if ($val -eq $null) { "" } else { $val.ToString() }
@@ -137,8 +144,13 @@ try {
         }
         # ── API: GET all records ──
         elseif ($url -eq "/api/records" -and $method -eq "GET") {
-            $data = Get-ExcelData
-            $json = $data | ConvertTo-Json -Depth 5
+            try {
+                $data = Get-ExcelData
+                $json = if ($data.Count -gt 0) { $data | ConvertTo-Json -Depth 5 -Compress } else { '[]' }
+            } catch {
+                $json = '{"error":"' + $_.Exception.Message + '"}'
+                Write-Host "Error reading Excel: $_.Exception.Message" -ForegroundColor Red
+            }
             $buffer = [System.Text.Encoding]::UTF8.GetBytes($json)
             $response.ContentType = "application/json"
             $response.ContentLength64 = $buffer.Length
