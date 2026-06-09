@@ -139,7 +139,7 @@ try {
             $buffer = [System.Text.Encoding]::UTF8.GetBytes($body)
             $response.ContentType = "text/html; charset=utf-8"
             $response.ContentLength64 = $buffer.Length
-            $response.OutputStream.Write($buffer, 0, $buffer.Length)
+            try { $response.OutputStream.Write($buffer, 0, $buffer.Length) } catch { }
             $response.Close()
         }
         # ── API: GET all records ──
@@ -154,7 +154,7 @@ try {
             $buffer = [System.Text.Encoding]::UTF8.GetBytes($json)
             $response.ContentType = "application/json"
             $response.ContentLength64 = $buffer.Length
-            $response.OutputStream.Write($buffer, 0, $buffer.Length)
+            try { $response.OutputStream.Write($buffer, 0, $buffer.Length) } catch { }
             $response.Close()
         }
         # ── API: POST new record ──
@@ -167,7 +167,7 @@ try {
             $buf = [System.Text.Encoding]::UTF8.GetBytes($respBody)
             $response.ContentType = "application/json"
             $response.ContentLength64 = $buf.Length
-            $response.OutputStream.Write($buf, 0, $buf.Length)
+            try { $response.OutputStream.Write($buf, 0, $buf.Length) } catch { }
             $response.Close()
         }
         # ── API: DELETE record ──
@@ -196,7 +196,7 @@ try {
             $buf = [System.Text.Encoding]::UTF8.GetBytes($resp)
             $response.ContentType = "application/json"
             $response.ContentLength64 = $buf.Length
-            $response.OutputStream.Write($buf, 0, $buf.Length)
+            try { $response.OutputStream.Write($buf, 0, $buf.Length) } catch { }
             $response.Close()
         }
         # ── API: UPDATE record ──
@@ -237,7 +237,7 @@ try {
             $buf = [System.Text.Encoding]::UTF8.GetBytes($resp)
             $response.ContentType = "application/json"
             $response.ContentLength64 = $buf.Length
-            $response.OutputStream.Write($buf, 0, $buf.Length)
+            try { $response.OutputStream.Write($buf, 0, $buf.Length) } catch { }
             $response.Close()
         }
         # ── 404 ──
@@ -246,7 +246,7 @@ try {
             $buf404 = [System.Text.Encoding]::UTF8.GetBytes($body404)
             $response.ContentType = "text/html"
             $response.ContentLength64 = $buf404.Length
-            $response.OutputStream.Write($buf404, 0, $buf404.Length)
+            try { $response.OutputStream.Write($buf404, 0, $buf404.Length) } catch { }
             $response.Close()
         }
     }
