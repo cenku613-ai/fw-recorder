@@ -701,6 +701,15 @@ async function exportMermaidSVG() {
     showToast('Mermaid.js not loaded. Export code instead.', 'warning');
     copyMermaidCode();
   }
+}
+
+// ── Debug: Check functions ──
+console.log('generateTopology:', typeof generateTopology);
+console.log('copyMermaidCode:', typeof copyMermaidCode);
+console.log('exportMermaidSVG:', typeof exportMermaidSVG);
+console.log('switchTab:', typeof switchTab);
+console.log('allRecords:', allRecords);
+console.log('loadingRecords:', loadingRecords);
 }</script>
 </body>
 </html>
