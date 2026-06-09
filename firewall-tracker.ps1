@@ -57,7 +57,7 @@ function Get-ExcelData {
             $row = @{}
             for ($c = 1; $c -le 15; $c++) {
                 $val = $ws.Cells.Item($r, $c).Value2
-                $row[$c] = if ($val -eq $null) { "" } else { $val.ToString() }
+                $row["$c"] = if ($val -eq $null) { "" } else { $val.ToString() }
             }
             $data += $row
         }
