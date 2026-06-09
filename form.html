@@ -321,7 +321,10 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 <script>
+mermaid.initialize({ startOnLoad: false, theme: 'dark' });
+
 const API = '';
 let allRecords = [];
 
@@ -507,8 +510,16 @@ function switchTab(tab) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   document.getElementById('tab-' + tab).classList.add('active');
-  document.querySelectorAll('.tab')[tab === 'form' ? 0 : 1].classList.add('active');
+  // Update tab button active state (form=0, table=1, topology=2)
+  const tabIndex = {form: 0, table: 1, topology: 2};
+  if (tabIndex[tab] !== undefined) {
+    document.querySelectorAll('.tab')[tabIndex[tab]].classList.add('active');
+  }
   if (tab === 'table') loadRecords();
+  if (tab === 'topology') {
+    // Load records if not already loaded
+    if (!allRecords || allRecords.length === 0) loadRecords();
+  }
 }
 
 // ── Toast ──
@@ -534,6 +545,138 @@ function exportCSV() {
   a.download = 'firewall-requests-' + new Date().toISOString().split('T')[0] + '.csv';
   a.click();
 }
-</script>
+
+// ── Network Topology ──
+let currentMermaidCode = '';
+
+async function generateTopology() {
+  if (!allRecords || allRecords.length === 0) {
+    showToast('No records to generate topology.', 'error');
+    return;
+  }
+
+  // Collect unique nodes and connections
+  const nodes = new Set();
+  const edges = new Set();
+  
+  allRecords.forEach(r => {
+    const src = r.SourceIP || 'Unknown';
+    const srcHost = r.SourceHostname || '';
+    const dst = r.DestIP || 'Unknown';
+    const dstHost = r.DestHostname || '';
+    
+    // Add nodes
+    nodes.add(src);
+    if (srcHost) nodes.add(srcHost + ' (' + src + ')');
+    nodes.add(dst);
+    if (dstHost) nodes.add(dstHost + ' (' + dst + ')');
+    
+    // Add edge (use IP as identifier)
+    const edgeKey = src + '->' + dst;
+    if (!edges.has(edgeKey)) {
+      edges.add(edgeKey);
+    }
+  });
+
+  // Generate Mermaid code
+  let mermaidCode = 'graph LR
+';
+  mermaidCode += '    classDef source fill:#0ea5e9,stroke:#0284c7,color:#000,font-weight:bold;
+';
+  mermaidCode += '    classDef dest fill:#10b981,stroke:#059669,color:#000,font-weight:bold;
+';
+  mermaidCode += '    classDef unknown fill:#64748b,stroke:#475569,color:#fff;
+
+';
+  
+  // Add nodes
+  const sortedNodes = Array.from(nodes).sort();
+  sortedNodes.forEach(node => {
+    const safeId = node.replace(/[^a-zA-Z0-9 ]/g, '_');
+    if (node.includes('(')) {
+      mermaidCode += '    ' + safeId + '["' + node + '"]
+';
+    } else {
+      mermaidCode += '    ' + safeId + '["' + node + '"]
+';
+    }
+  });
+  
+  mermaidCode += '
+';
+  
+  // Add edges
+  edges.forEach(edge => {
+    const [src, dst] = edge.split('->');
+    const safeSrc = src.replace(/[^a-zA-Z0-9 ]/g, '_');
+    const safeDst = dst.replace(/[^a-zA-Z0-9 ]/g, '_');
+    mermaidCode += '    ' + safeSrc + ' --> ' + safeDst + '
+';
+  });
+
+  currentMermaidCode = mermaidCode;
+  
+  // Render Mermaid diagram
+  const output = document.getElementById('topology-output');
+  output.innerHTML = '<div class="mermaid-diagram"><pre>' + mermaidCode.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</pre></div>';
+  
+  // Try to render with Mermaid.js if available
+  if (typeof mermaid !== 'undefined') {
+    try {
+      const graphId = 'mermaid-' + Date.now();
+      output.innerHTML = '<div class="mermaid-diagram" id="' + graphId + '"></div>';
+      const graphEl = document.getElementById(graphId);
+      graphEl.innerHTML = currentMermaidCode;
+      mermaid.init(undefined, graphEl);
+      showToast('Topology generated successfully!', 'success');
+    } catch (e) {
+      output.innerHTML = '<div class="empty-state"><p>Mermaid diagram failed to render. See code below:</p></div>' + 
+        '<pre>' + mermaidCode.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</pre>';
+      showToast('Topology generated (code view only)', 'warning');
+    }
+  } else {
+    showToast('Topology generated (code view)', 'success');
+  }
+}
+
+function copyMermaidCode() {
+  if (!currentMermaidCode) {
+    showToast('No topology code to copy. Generate one first.', 'error');
+    return;
+  }
+  navigator.clipboard.writeText(currentMermaidCode).then(() => {
+    showToast('Mermaid code copied to clipboard!', 'success');
+  }).catch(() => {
+    showToast('Failed to copy. Check browser permissions.', 'error');
+  });
+}
+
+async function exportMermaidSVG() {
+  if (!currentMermaidCode) {
+    showToast('No topology to export. Generate one first.', 'error');
+    return;
+  }
+  
+  if (typeof mermaid !== 'undefined') {
+    try {
+      const svg = await mermaid.render('export-svg', currentMermaidCode);
+      const blob = new Blob([svg], { type: 'image/svg+xml' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'network-topology.svg';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('SVG exported successfully!', 'success');
+    } catch (e) {
+      showToast('Export failed: ' + e.message, 'error');
+    }
+  } else {
+    showToast('Mermaid.js not loaded. Export code instead.', 'warning');
+    copyMermaidCode();
+  }
+}</script>
 </body>
 </html>
