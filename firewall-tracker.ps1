@@ -113,7 +113,7 @@ try {
     while ($listener.IsListening) {
         $context = $listener.GetContext()
         $request = $context.Request
-         = if (.Url.AbsolutePath -eq "/") { "/" } else { .Url.AbsolutePath.TrimEnd("/") }
+                $url = if ($request.Url.AbsolutePath -eq "/") { "/" } else { $request.Url.AbsolutePath.TrimEnd("/") }
         $method = $request.HttpMethod
         $response = $context.Response
 
