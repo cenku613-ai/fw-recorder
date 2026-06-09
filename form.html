@@ -398,8 +398,8 @@ function filterTable() {
   const priority = document.getElementById('filterPriority').value;
   const filtered = allRecords.filter(r => {
     const matchSearch = !q || Object.values(r).some(v => String(v).toLowerCase().includes(q));
-    const matchStatus = !status || r.Protocol === status || r.Direction === status;
-    const matchPriority = !priority || r.Justification === priority || r.DateSubmitted === priority;
+    const matchStatus = !status || r.Status === status;
+    const matchPriority = !priority || r.Priority === priority;
     return matchSearch && matchStatus && matchPriority;
   });
   renderTable(filtered);
