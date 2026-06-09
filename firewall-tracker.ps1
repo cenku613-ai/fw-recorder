@@ -120,12 +120,12 @@ try {
         # ── Serve HTML form ──
         if ($url -eq "/" -or $url -eq "/index.html" -or $url -eq "/form.html") {
             # Read the form file from the same directory
-            $scriptDir = Split-Path -Parent $PSScriptRoot
+            $scriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Definition }
             $htmlPath = Join-Path $scriptDir "form.html"
             if (Test-Path $htmlPath) {
                 $body = [System.IO.File]::ReadAllText($htmlPath)
             } else {
-                $body = "<h1>form.html not found</h1><p>Place form.html next to $($PSScriptRoot)</p>"
+                $body = "<h1>form.html not found</h1><p>Expected at: " + $scriptDir + "</p><p>Place form.html in the same directory as firewall-tracker.ps1</p>"
             }
             $buffer = [System.Text.Encoding]::UTF8.GetBytes($body)
             $response.ContentType = "text/html; charset=utf-8"
