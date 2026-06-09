@@ -212,6 +212,7 @@ try {
                     break
                 }
             }
+            if ($found) {
                 $wb.Save()
             }
             $wb.Close($false)
