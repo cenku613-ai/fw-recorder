@@ -113,19 +113,19 @@ try {
     while ($listener.IsListening) {
         $context = $listener.GetContext()
         $request = $context.Request
-        $url = $request.Url.AbsolutePath.TrimEnd("/")
+         = if (.Url.AbsolutePath -eq "/") { "/" } else { .Url.AbsolutePath.TrimEnd("/") }
         $method = $request.HttpMethod
         $response = $context.Response
 
         # ── Serve HTML form ──
         if ($url -eq "/" -or $url -eq "/index.html" -or $url -eq "/form.html") {
             # Read the form file from the same directory
-            $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+            $scriptDir = Split-Path -Parent $PSScriptRoot
             $htmlPath = Join-Path $scriptDir "form.html"
             if (Test-Path $htmlPath) {
                 $body = [System.IO.File]::ReadAllText($htmlPath)
             } else {
-                $body = "<h1>form.html not found</h1><p>Place form.html next to $($MyInvocation.MyCommand.Path)</p>"
+                $body = "<h1>form.html not found</h1><p>Place form.html next to $($PSScriptRoot)</p>"
             }
             $buffer = [System.Text.Encoding]::UTF8.GetBytes($body)
             $response.ContentType = "text/html; charset=utf-8"
