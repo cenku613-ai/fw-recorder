@@ -328,19 +328,27 @@ console.log('Mermaid library loaded:', typeof mermaid !== 'undefined');
 
 const API = '';
 let allRecords = [];
-console.log('API:', API);
+let loadingRecords = false;
 
 // ── Load data on page load ──
 document.addEventListener('DOMContentLoaded', () => { loadRecords(); });
 
 async function loadRecords() {
+  if (loadingRecords) return;
+  loadingRecords = true;
+  
   try {
     const res = await fetch(API + '/api/records');
     allRecords = await res.json();
     renderTable(allRecords);
     updateStats(allRecords);
+    console.log('Records loaded:', allRecords.length);
   } catch (e) {
     console.error('Failed to load records:', e);
+    showToast('Failed to load records: ' + e.message, 'error');
+    allRecords = [];
+  } finally {
+    loadingRecords = false;
   }
 }
 
@@ -517,13 +525,19 @@ function switchTab(tab) {
   if (tabIndex[tab] !== undefined) {
     document.querySelectorAll('.tab')[tabIndex[tab]].classList.add('active');
   }
-  if (tab === 'table') loadRecords();
-  if (tab === 'topology') {
-    // Load records if not already loaded
+  if (tab === 'table') {
     if (!allRecords || allRecords.length === 0) loadRecords();
-    else console.log('Records already loaded:', allRecords.length);
   }
-  console.log('Switched to tab:', tab);
+  if (tab === 'topology') {
+    if (!allRecords || allRecords.length === 0) {
+      loadRecords().then(() => {
+        // After records load, generate topology automatically
+        if (allRecords && allRecords.length > 0) {
+          generateTopology();
+        }
+      });
+    }
+  }
 }
 
 // ── Toast ──
@@ -554,7 +568,12 @@ function exportCSV() {
 let currentMermaidCode = '';
 
 async function generateTopology() {
-  console.log('generateTopology called, allRecords:', allRecords);
+  // Ensure records are loaded
+  if (loadingRecords) {
+    showToast('Loading records, please wait...', 'warning');
+    while (loadingRecords) await new Promise(r => setTimeout(r, 100));
+  }
+  
   if (!allRecords || allRecords.length === 0) {
     showToast('No records to generate topology.', 'error');
     return;
