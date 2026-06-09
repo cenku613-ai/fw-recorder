@@ -178,7 +178,7 @@ try {
             $excel.Quit()
             [System.Runtime.Interopservices.Marshal]::ReleaseComObject($excel) | Out-Null
             $status = if ($found) { "deleted" } else { "not_found" }
-            $resp = '{"ok":true,"status":"'$status'"}'
+            $resp = '{"ok":true,"status":"' + $status + '"}'
             $buf = [System.Text.Encoding]::UTF8.GetBytes($resp)
             $response.ContentType = "application/json"
             $response.ContentLength64 = $buf.Length
@@ -218,7 +218,7 @@ try {
             $excel.Quit()
             [System.Runtime.Interopservices.Marshal]::ReleaseComObject($excel) | Out-Null
             $status = if ($found) { "updated" } else { "not_found" }
-            $resp = '{"ok":true,"status":"'$status'"}'
+            $resp = '{"ok":true,"status":"' + $status + '"}'
             $buf = [System.Text.Encoding]::UTF8.GetBytes($resp)
             $response.ContentType = "application/json"
             $response.ContentLength64 = $buf.Length
