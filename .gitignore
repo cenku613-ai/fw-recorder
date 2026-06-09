@@ -1,0 +1,11 @@
+# Generated data files
+*.xlsx
+*.csv
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

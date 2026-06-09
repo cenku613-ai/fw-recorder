@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Firewall Request Tracker</title>
+<style>
+  :root {
+    --bg: #0f1117; --card: #1a1d27; --border: #2a2d3a;
+    --accent: #6c8cff; --accent-hover: #8da4ff;
+    --text: #e0e0e8; --text-dim: #8888a0;
+    --success: #4ade80; --warn: #fbbf24; --danger: #f87171;
+    --pending: #fbbf24; --approved: #4ade80; --rejected: #f87171; --implemented: #6c8cff;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg); color: var(--text); min-height: 100vh;
+  }
+  .header {
+    background: var(--card); border-bottom: 1px solid var(--border);
+    padding: 20px 32px; display: flex; justify-content: space-between; align-items: center;
+  }
+  .header h1 { font-size: 20px; font-weight: 600; color: var(--accent); }
+  .header .stats { display: flex; gap: 24px; font-size: 13px; color: var(--text-dim); }
+  .header .stats span strong { color: var(--text); }
+  .container { max-width: 1400px; margin: 0 auto; padding: 24px 32px; }
+  .tabs { display: flex; gap: 0; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
+  .tab {
+    padding: 10px 24px; cursor: pointer; font-size: 14px; color: var(--text-dim);
+    border-bottom: 2px solid transparent; transition: all 0.2s;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* ── Form Styles ── */
+  .form-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px; background: var(--card); padding: 24px; border-radius: 8px; border: 1px solid var(--border);
+  }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group label { font-size: 12px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
+  .form-group input, .form-group select, .form-group textarea {
+    background: var(--bg); border: 1px solid var(--border); color: var(--text);
+    padding: 10px 12px; border-radius: 6px; font-size: 14px; font-family: inherit;
+    transition: border-color 0.2s;
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+    outline: none; border-color: var(--accent);
+  }
+  .form-group textarea { resize: vertical; min-height: 60px; }
+  .form-actions { grid-column: 1 / -1; display: flex; gap: 12px; margin-top: 8px; }
+  .btn {
+    padding: 10px 24px; border: none; border-radius: 6px; font-size: 14px;
+    cursor: pointer; font-weight: 500; transition: all 0.2s; font-family: inherit;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-secondary { background: var(--border); color: var(--text); }
+  .btn-secondary:hover { background: #3a3d4a; }
+  .btn-danger { background: var(--danger); color: #fff; padding: 4px 10px; font-size: 12px; }
+  .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+  /* ── Table Styles ── */
+  .table-controls {
+    display: flex; gap: 12px; margin-bottom: 16px; align-items: center; flex-wrap: wrap;
+  }
+  .table-controls input, .table-controls select {
+    background: var(--card); border: 1px solid var(--border); color: var(--text);
+    padding: 8px 12px; border-radius: 6px; font-size: 13px;
+  }
+  .table-controls input { min-width: 250px; }
+  .table-wrap {
+    background: var(--card); border-radius: 8px; border: 1px solid var(--border);
+    overflow-x: auto;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th {
+    background: #12141c; padding: 10px 14px; text-align: left; font-weight: 600;
+    color: var(--text-dim); text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border); white-space: nowrap; position: sticky; top: 0;
+  }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  tr:hover td { background: #1e2030; }
+  .badge {
+    display: inline-block; padding: 2px 10px; border-radius: 12px;
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+  }
+  .badge-pending { background: #2a2500; color: var(--pending); }
+  .badge-approved { background: #0a2810; color: var(--approved); }
+  .badge-rejected { background: #2a0a0a; color: var(--rejected); }
+  .badge-implemented { background: #0a1a2a; color: var(--implemented); }
+  .protocol { font-family: 'Consolas', monospace; color: var(--accent); }
+  .priority-high { color: var(--danger); font-weight: 600; }
+  .priority-medium { color: var(--warn); }
+  .priority-low { color: var(--success); }
+  .actions { display: flex; gap: 6px; }
+  .empty-state {
+    text-align: center; padding: 60px 20px; color: var(--text-dim);
+  }
+  .empty-state h3 { font-size: 16px; margin-bottom: 8px; color: var(--text); }
+  .toast {
+    position: fixed; bottom: 24px; right: 24px; padding: 12px 20px;
+    border-radius: 8px; font-size: 14px; z-index: 1000;
+    animation: slideIn 0.3s ease;
+  }
+  .toast-success { background: #0a2810; border: 1px solid var(--success); color: var(--success); }
+  .toast-error { background: #2a0a0a; border: 1px solid var(--danger); color: var(--danger); }
+  @keyframes slideIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+  /* Modal */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+    z-index: 999; justify-content: center; align-items: center;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 24px; min-width: 500px; max-width: 600px;
+  }
+  .modal h3 { margin-bottom: 16px; color: var(--accent); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>&#9670; Firewall Request Tracker</h1>
+  <div class="stats">
+    <span>Total: <strong id="stat-total">0</strong></span>
+    <span>Pending: <strong id="stat-pending">0</strong></span>
+    <span>Approved: <strong id="stat-approved">0</strong></span>
+    <span>Implemented: <strong id="stat-implemented">0</strong></span>
+  </div>
+</div>
+
+<div class="container">
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('form')">&#62; New Request</div>
+    <div class="tab" onclick="switchTab('table')">&#62; All Requests</div>
+  </div>
+
+  <!-- ── Tab 1: Form ── -->
+  <div id="tab-form" class="tab-content active">
+    <form id="fw-form" onsubmit="return submitForm(event)">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Application</label>
+          <input type="text" id="application" placeholder="e.g. HTTP, MySQL, SSH">
+        </div>
+        <div class="form-group">
+          <label>Requester</label>
+          <input type="text" id="requester" placeholder="John Doe" required>
+        </div>
+        <div class="form-group">
+          <label>Priority</label>
+          <select id="priority">
+            <option value="Medium">Medium</option>
+            <option value="High">High</option>
+            <option value="Low">Low</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <select id="status">
+            <option value="Pending">Pending</option>
+            <option value="Approved">Approved</option>
+            <option value="Rejected">Rejected</option>
+            <option value="Implemented">Implemented</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Direction</label>
+          <select id="direction">
+            <option value="Inbound">Inbound</option>
+            <option value="Outbound">Outbound</option>
+            <option value="Both">Both</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Protocol</label>
+          <select id="protocol">
+            <option value="TCP">TCP</option>
+            <option value="UDP">UDP</option>
+            <option value="ICMP">ICMP</option>
+            <option value="Any">Any</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Source IP</label>
+          <input type="text" id="sourceIP" placeholder="10.0.1.0/24" required>
+        </div>
+        <div class="form-group">
+          <label>Dest IP</label>
+          <input type="text" id="destIP" placeholder="10.0.2.0/24" required>
+        </div>
+        <div class="form-group">
+          <label>Dest Port</label>
+          <input type="text" id="destPort" placeholder="443" required>
+        </div>
+        <div class="form-group" style="grid-column: 1 / -1;">
+          <label>Justification</label>
+          <textarea id="justification" placeholder="Why is this firewall rule needed?" rows="2"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Ticket Ref</label>
+          <input type="text" id="ticketRef" placeholder="JIRA-1234 or IT-5678">
+        </div>
+        <div class="form-group">
+          <label>Notes</label>
+          <input type="text" id="notes" placeholder="Additional notes">
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">&#10133; Save</button>
+          <button type="reset" class="btn btn-secondary">Clear</button>
+          <button type="button" class="btn btn-secondary" onclick="exportCSV()">Export CSV</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- ── Tab 2: Table ── -->
+  <div id="tab-table" class="tab-content">
+    <div class="table-controls">
+      <input type="text" id="searchInput" placeholder="Search by ID, IP, requester, port..." oninput="filterTable()">
+      <select id="filterStatus" onchange="filterTable()">
+        <option value="">All Status</option>
+        <option value="Pending">Pending</option>
+        <option value="Approved">Approved</option>
+        <option value="Rejected">Rejected</option>
+        <option value="Implemented">Implemented</option>
+      </select>
+      <select id="filterPriority" onchange="filterTable()">
+        <option value="">All Priority</option>
+        <option value="High">High</option>
+        <option value="Medium">Medium</option>
+        <option value="Low">Low</option>
+      </select>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Application</th><th>Date</th><th>Requester</th><th>Source</th><th>Dest</th>
+            <th>Proto</th><th>Dir</th><th>Status</th><th>Priority</th>
+            <th>Justification</th><th>Ticket</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ── Edit Modal ── -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <h3>Edit Request</h3>
+    <form id="edit-form" onsubmit="return saveEdit(event)">
+      <div class="form-grid" style="grid-template-columns: 1fr 1fr;">
+        <input type="hidden" id="editIdx">
+        <div class="form-group">
+          <label>Status</label>
+          <select id="editStatus">
+            <option value="Pending">Pending</option>
+            <option value="Approved">Approved</option>
+            <option value="Rejected">Rejected</option>
+            <option value="Implemented">Implemented</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Priority</label>
+          <select id="editPriority">
+            <option value="High">High</option>
+            <option value="Medium">Medium</option>
+            <option value="Low">Low</option>
+          </select>
+        </div>
+        <div class="form-group" style="grid-column: 1/-1;">
+          <label>Notes</label>
+          <textarea id="editNotes" rows="2"></textarea>
+        </div>
+        <div class="form-group" style="grid-column: 1/-1; grid-template-columns: 1fr 1fr;">
+          <label>Date Closed</label>
+          <input type="text" id="editDateClosed" placeholder="auto or leave empty">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+const API = '';
+let allRecords = [];
+
+// ── Load data on page load ──
+document.addEventListener('DOMContentLoaded', () => { loadRecords(); });
+
+async function loadRecords() {
+  try {
+    const res = await fetch(API + '/api/records');
+    allRecords = await res.json();
+    renderTable(allRecords);
+    updateStats(allRecords);
+  } catch (e) {
+    console.error('Failed to load records:', e);
+  }
+}
+
+function updateStats(records) {
+  document.getElementById('stat-total').textContent = records.length;
+  document.getElementById('stat-pending').textContent = records.filter(r => r[3] === 'Pending').length;
+  document.getElementById('stat-approved').textContent = records.filter(r => r[3] === 'Approved').length;
+  document.getElementById('stat-implemented').textContent = records.filter(r => r[3] === 'Implemented').length;
+}
+
+// ── Submit form ──
+async function submitForm(e) {
+  e.preventDefault();
+  const data = {
+    Application: document.getElementById('application').value,
+    SourceIP: document.getElementById('sourceIP').value,
+    DestIP: document.getElementById('destIP').value,
+    DestPort: document.getElementById('destPort').value,
+    Protocol: document.getElementById('protocol').value,
+    Direction: document.getElementById('direction').value,
+    Status: document.getElementById('status').value,
+    Requester: document.getElementById('requester').value,
+    Priority: document.getElementById('priority').value,
+    Justification: document.getElementById('justification').value,
+    DateClosed: '',
+    Notes: document.getElementById('notes').value,
+    TicketRef: document.getElementById('ticketRef').value,
+  };
+  try {
+    const res = await fetch(API + '/api/records', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    const result = await res.json();
+    if (result.ok) {
+      showToast('Request submitted!', 'success');
+      document.getElementById('fw-form').reset();
+      loadRecords();
+    }
+  } catch (e) {
+    showToast('Failed to submit: ' + e.message, 'error');
+  }
+  return false;
+}
+
+// ── Render table ──
+function renderTable(records) {
+  const tbody = document.getElementById('tableBody');
+  if (records.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="12"><div class="empty-state"><h3>No records yet</h3><p>Submit your first firewall request using the form above.</p></div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = records.map((r, i) => {
+    const st = (r[3] || '').toLowerCase();
+    const badgeClass = 'badge-' + st;
+    const priClass = 'priority-' + (r[2] || 'medium').toLowerCase();
+    const src = r[4];
+    const dst = (r[5] || '') + ':' + (r[6] || '*');
+    const date = r[10] || 'Submitted: -';
+    const app = r[0];
+    const requester = r[1];
+    const ticket = r[13];
+    return `<tr>
+      <td><strong>${app}</strong></td>
+      <td style="font-size:11px;color:var(--text-dim)">${date}</td>
+      <td>${requester}</td>
+      <td class="protocol">${src || '-'}</td>
+      <td class="protocol">${dst || '-'}</td>
+      <td class="protocol">${r[7] || '-'}</td>
+      <td>${r[8] || '-'}</td>
+      <td><span class="badge ${badgeClass}">${r[3] || 'Pending'}</span></td>
+      <td class="${priClass}">${r[2] || '-'}</td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r[9] || ''}">${r[9] || '-'}</td>
+      <td>${ticket || '-'}</td>
+      <td><div class="actions">
+        <button class="btn btn-secondary btn-sm" onclick="openEdit(${i})">Edit</button>
+        <button class="btn btn-danger" onclick="deleteRecord(${i})">&times;</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Search / Filter ──
+function filterTable() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  const status = document.getElementById('filterStatus').value;
+  const priority = document.getElementById('filterPriority').value;
+  const filtered = allRecords.filter(r => {
+    const matchSearch = !q || Object.values(r).some(v => String(v).toLowerCase().includes(q));
+    const matchStatus = !status || r[7] === status || r[8] === status;
+    const matchPriority = !priority || r[9] === priority || r[10] === priority;
+    return matchSearch && matchStatus && matchPriority;
+  });
+  renderTable(filtered);
+}
+
+// ── Edit ──
+async function openEdit(idx) {
+  const r = allRecords[idx];
+  document.getElementById('editIdx').value = idx;
+  document.getElementById('editStatus').value = r[3] || 'Pending';
+  document.getElementById('editPriority').value = r[2] || 'Medium';
+  document.getElementById('editNotes').value = r[12] || '';
+  document.getElementById('editDateClosed').value = r[11] || '';
+  document.getElementById('editModal').classList.add('show');
+}
+
+async function saveEdit(e) {
+  e.preventDefault();
+  const idx = parseInt(document.getElementById('editIdx').value);
+  const r = allRecords[idx];
+  const data = {
+    Status: document.getElementById('editStatus').value,
+    Notes: document.getElementById('editNotes').value,
+    DateClosed: document.getElementById('editDateClosed').value || new Date().toISOString().split('T')[0],
+  };
+  try {
+    const res = await fetch(API + '/api/records/' + encodeURIComponent(r[0]), {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    const result = await res.json();
+    if (result.ok) {
+      showToast('Record updated!', 'success');
+      closeModal();
+      loadRecords();
+    }
+  } catch (e) {
+    showToast('Failed to update: ' + e, 'error');
+  }
+  return false;
+}
+
+function closeModal() {
+  document.getElementById('editModal').classList.remove('show');
+}
+
+// ── Delete ──
+async function deleteRecord(idx) {
+  if (!confirm('Delete this record?')) return;
+  const r = allRecords[idx];
+  try {
+    const res = await fetch(API + '/api/records/' + encodeURIComponent(r[0]), { method: 'DELETE' });
+    const result = await res.json();
+    if (result.ok) {
+      showToast('Record deleted', 'success');
+      loadRecords();
+    }
+  } catch (e) {
+    showToast('Failed to delete: ' + e, 'error');
+  }
+}
+
+// ── Tabs ──
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  document.querySelectorAll('.tab')[tab === 'form' ? 0 : 1].classList.add('active');
+  if (tab === 'table') loadRecords();
+}
+
+// ── Toast ──
+function showToast(msg, type) {
+  const t = document.createElement('div');
+  t.className = 'toast toast-' + type;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+// ── Export CSV ──
+function exportCSV() {
+  if (allRecords.length === 0) { showToast('No records to export', 'error'); return; }
+  const headers = ['Application','Requester','Priority','Status','Source IP','Dest IP','Dest Port','Protocol','Direction','Justification','Date Submitted','Date Closed','Notes','Ticket Ref'];
+  let csv = headers.join(',') + '\n';
+  allRecords.forEach(r => {
+    csv += headers.map((_, i) => '"' + String(r[i] || '').replace(/"/g, '""') + '"').join(',') + '\n';
+  });
+  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'firewall-requests-' + new Date().toISOString().split('T')[0] + '.csv';
+  a.click();
+}
+</script>
+</body>
+</html>
