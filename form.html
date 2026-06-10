@@ -331,25 +331,28 @@ let allRecords = [];
 let loadingRecords = false;
 
 // ── Load data on page load ──
-document.addEventListener('DOMContentLoaded', () => { loadRecords(); });
+loadRecords();
 
-async function loadRecords() {
+function loadRecords() {
   if (loadingRecords) return;
   loadingRecords = true;
   
-  try {
-    const res = await fetch(API + '/api/records');
-    allRecords = await res.json();
-    renderTable(allRecords);
-    updateStats(allRecords);
-    console.log('Records loaded:', allRecords.length);
-  } catch (e) {
-    console.error('Failed to load records:', e);
-    showToast('Failed to load records: ' + e.message, 'error');
-    allRecords = [];
-  } finally {
-    loadingRecords = false;
-  }
+  fetch(API + '/api/records')
+    .then(res => res.json())
+    .then(data => {
+      allRecords = data;
+      renderTable(allRecords);
+      updateStats(allRecords);
+      console.log('Records loaded:', allRecords.length);
+    })
+    .catch(e => {
+      console.error('Failed to load records:', e);
+      showToast('Failed to load records: ' + e.message, 'error');
+      allRecords = [];
+    })
+    .finally(() => {
+      loadingRecords = false;
+    });
 }
 
 function updateStats(records) {
