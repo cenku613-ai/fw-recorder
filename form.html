@@ -627,24 +627,32 @@ async function generateTopology() {
   });
 
   // Generate Mermaid code
-  let mermaidCode = `graph LR\n`;
-  mermaidCode += `    classDef source fill:#0ea5e9,stroke:#0284c7,color:#000,font-weight:bold;\n`;
-  mermaidCode += `    classDef dest fill:#10b981,stroke:#059669,color:#000,font-weight:bold;\n`;
-  mermaidCode += `    classDef unknown fill:#64748b,stroke:#475569,color:#fff;\n\n`;
+  let mermaidCode = `graph LR
+`;
+  mermaidCode += `    classDef source fill:#0ea5e9,stroke:#0284c7,color:#000,font-weight:bold;
+`;
+  mermaidCode += `    classDef dest fill:#10b981,stroke:#059669,color:#000,font-weight:bold;
+`;
+  mermaidCode += `    classDef unknown fill:#64748b,stroke:#475569,color:#fff;
+
+`;
   
   // Add nodes with safe IDs and proper labels
   nodes.forEach((label, id) => {
     // Escape special characters in label for Mermaid
     const escapedLabel = label.replace(/"/g, '&quot;');
-    mermaidCode += `    ${id}["${escapedLabel}"]\n`;
+    mermaidCode += `    ${id}["${escapedLabel}"]
+`;
   });
   
-  mermaidCode += `\n`;
+  mermaidCode += `
+`;
   
   // Add edges with safe IDs
   edges.forEach(edge => {
     const [srcId, dstId] = edge.split('->');
-    mermaidCode += `    ${srcId} --> ${dstId}\n`;
+    mermaidCode += `    ${srcId} --> ${dstId}
+`;
   });
 
   currentMermaidCode = mermaidCode;
