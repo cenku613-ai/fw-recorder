@@ -334,25 +334,29 @@ let loadingRecords = false;
 loadRecords();
 
 function loadRecords() {
-  if (loadingRecords) return;
-  loadingRecords = true;
-  
-  fetch(API + '/api/records')
-    .then(res => res.json())
-    .then(data => {
-      allRecords = data;
-      renderTable(allRecords);
-      updateStats(allRecords);
-      console.log('Records loaded:', allRecords.length);
-    })
-    .catch(e => {
-      console.error('Failed to load records:', e);
-      showToast('Failed to load records: ' + e.message, 'error');
-      allRecords = [];
-    })
-    .finally(() => {
-      loadingRecords = false;
-    });
+  return new Promise((resolve, reject) => {
+    if (loadingRecords) { resolve(); return; }
+    loadingRecords = true;
+    
+    fetch(API + '/api/records')
+      .then(res => res.json())
+      .then(data => {
+        allRecords = data;
+        renderTable(allRecords);
+        updateStats(allRecords);
+        console.log('Records loaded:', allRecords.length);
+        resolve();
+      })
+      .catch(e => {
+        console.error('Failed to load records:', e);
+        showToast('Failed to load records: ' + e.message, 'error');
+        allRecords = [];
+        reject(e);
+      })
+      .finally(() => {
+        loadingRecords = false;
+      });
+  });
 }
 
 function updateStats(records) {
@@ -583,8 +587,23 @@ async function generateTopology() {
   }
 
   // Collect unique nodes and connections
-  const nodes = new Set();
+  const nodes = new Map(); // Map<safeId, label>
   const edges = new Set();
+  
+  let nodeIdCounter = 0;
+  function getNodeId(label) {
+    // Generate a safe ID from the label
+    const safe = String(label).replace(/[^a-zA-Z0-9]/g, '_');
+    const id = safe || 'node' + (++nodeIdCounter);
+    // Ensure uniqueness
+    let finalId = id;
+    let suffix = 1;
+    while (nodes.has(finalId)) {
+      finalId = id + '_' + (suffix++);
+    }
+    nodes.set(finalId, label);
+    return finalId;
+  }
   
   allRecords.forEach(r => {
     const src = r.SourceIP || 'Unknown';
@@ -592,53 +611,40 @@ async function generateTopology() {
     const dst = r.DestIP || 'Unknown';
     const dstHost = r.DestHostname || '';
     
-    // Add nodes
-    nodes.add(src);
-    if (srcHost) nodes.add(srcHost + ' (' + src + ')');
-    nodes.add(dst);
-    if (dstHost) nodes.add(dstHost + ' (' + dst + ')');
+    // Create labels with hostnames if available
+    const srcLabel = srcHost ? srcHost + ' (' + src + ')' : src;
+    const dstLabel = dstHost ? dstHost + ' (' + dst + ')' : dst;
     
-    // Add edge (use IP as identifier)
-    const edgeKey = src + '->' + dst;
+    // Get safe IDs for nodes
+    const srcId = getNodeId(srcLabel);
+    const dstId = getNodeId(dstLabel);
+    
+    // Add edge (use safe IDs)
+    const edgeKey = srcId + '->' + dstId;
     if (!edges.has(edgeKey)) {
       edges.add(edgeKey);
     }
   });
 
   // Generate Mermaid code
-  let mermaidCode = `graph LR
-`;
-  mermaidCode += `    classDef source fill:#0ea5e9,stroke:#0284c7,color:#000,font-weight:bold;
-`;
-  mermaidCode += `    classDef dest fill:#10b981,stroke:#059669,color:#000,font-weight:bold;
-`;
-  mermaidCode += `    classDef unknown fill:#64748b,stroke:#475569,color:#fff;
-
-`;
+  let mermaidCode = `graph LR\n`;
+  mermaidCode += `    classDef source fill:#0ea5e9,stroke:#0284c7,color:#000,font-weight:bold;\n`;
+  mermaidCode += `    classDef dest fill:#10b981,stroke:#059669,color:#000,font-weight:bold;\n`;
+  mermaidCode += `    classDef unknown fill:#64748b,stroke:#475569,color:#fff;\n\n`;
   
-  // Add nodes
-  const sortedNodes = Array.from(nodes).sort();
-  sortedNodes.forEach(node => {
-    const safeId = node.replace(/[^a-zA-Z0-9 ]/g, '_');
-    if (node.includes('(')) {
-      mermaidCode += `    ` + safeId + `["` + node + `"]
-`;
-    } else {
-      mermaidCode += `    ` + safeId + `["` + node + `"]
-`;
-    }
+  // Add nodes with safe IDs and proper labels
+  nodes.forEach((label, id) => {
+    // Escape special characters in label for Mermaid
+    const escapedLabel = label.replace(/"/g, '&quot;');
+    mermaidCode += `    ${id}["${escapedLabel}"]\n`;
   });
   
-  mermaidCode += `
-`;
+  mermaidCode += `\n`;
   
-  // Add edges
+  // Add edges with safe IDs
   edges.forEach(edge => {
-    const [src, dst] = edge.split('->');
-    const safeSrc = src.replace(/[^a-zA-Z0-9 ]/g, '_');
-    const safeDst = dst.replace(/[^a-zA-Z0-9 ]/g, '_');
-    mermaidCode += `    ` + safeSrc + ` --> ` + safeDst + `
-`;
+    const [srcId, dstId] = edge.split('->');
+    mermaidCode += `    ${srcId} --> ${dstId}\n`;
   });
 
   currentMermaidCode = mermaidCode;
