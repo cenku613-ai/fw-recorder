@@ -606,39 +606,39 @@ async function generateTopology() {
   });
 
   // Generate Mermaid code
-  let mermaidCode = 'graph LR
-';
-  mermaidCode += '    classDef source fill:#0ea5e9,stroke:#0284c7,color:#000,font-weight:bold;
-';
-  mermaidCode += '    classDef dest fill:#10b981,stroke:#059669,color:#000,font-weight:bold;
-';
-  mermaidCode += '    classDef unknown fill:#64748b,stroke:#475569,color:#fff;
+  let mermaidCode = `graph LR
+`;
+  mermaidCode += `    classDef source fill:#0ea5e9,stroke:#0284c7,color:#000,font-weight:bold;
+`;
+  mermaidCode += `    classDef dest fill:#10b981,stroke:#059669,color:#000,font-weight:bold;
+`;
+  mermaidCode += `    classDef unknown fill:#64748b,stroke:#475569,color:#fff;
 
-';
+`;
   
   // Add nodes
   const sortedNodes = Array.from(nodes).sort();
   sortedNodes.forEach(node => {
     const safeId = node.replace(/[^a-zA-Z0-9 ]/g, '_');
     if (node.includes('(')) {
-      mermaidCode += '    ' + safeId + '["' + node + '"]
-';
+      mermaidCode += `    ` + safeId + `["` + node + `"]
+`;
     } else {
-      mermaidCode += '    ' + safeId + '["' + node + '"]
-';
+      mermaidCode += `    ` + safeId + `["` + node + `"]
+`;
     }
   });
   
-  mermaidCode += '
-';
+  mermaidCode += `
+`;
   
   // Add edges
   edges.forEach(edge => {
     const [src, dst] = edge.split('->');
     const safeSrc = src.replace(/[^a-zA-Z0-9 ]/g, '_');
     const safeDst = dst.replace(/[^a-zA-Z0-9 ]/g, '_');
-    mermaidCode += '    ' + safeSrc + ' --> ' + safeDst + '
-';
+    mermaidCode += `    ` + safeSrc + ` --> ` + safeDst + `
+`;
   });
 
   currentMermaidCode = mermaidCode;
